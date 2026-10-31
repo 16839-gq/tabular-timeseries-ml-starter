@@ -1,0 +1,46 @@
+# EXAMPLE ADAPTER, NOT runnable without your own PRE-CLEANED input CSVs.
+# First convert units, normalize text/typos and preserve appropriate IDs yourself.
+# This is an illustrative subset of variables, NOT an exact clone of the notebook.
+name: boat_adapter
+random_seed: 42
+data:
+  train_path: data/raw/boats_precleaned_priced.csv
+  predict_path: data/raw/boats_precleaned_unpriced.csv
+  group_column: Make
+  id_columns: [Make, Variant, Year]
+target_column: Listing Price (USD)
+split:
+  strategy: group
+  test_size: 0.2
+cv:
+  strategy: group
+  n_splits: 5
+features:
+  numeric: [Year, Hull length, Beam (width), Deck area, Draft, Upwind sail area, Light displacement (MLC), Engine average power, Hull_beam_ratio, Power_per_displacement]
+  categorical: [Make, Geographic Region]
+  ratios:
+    - {name: Hull_beam_ratio, numerator: Hull length, denominator: Beam (width)}
+    - {name: Power_per_displacement, numerator: Engine average power, denominator: Light displacement (MLC)}
+cleaning:
+  strip_strings: true
+  sentinels:
+    Mainsail area: [-1]
+  numeric_bounds:
+    Year: {min: 1900, max: 2030}
+    Hull length: {min: 0.1}
+    Light displacement (MLC): {min: 0.1}
+group_imputation:
+  strategy: median
+  rules:
+    Draft: [[Make], [Geographic Region]]
+    Engine average power: [[Make], [Geographic Region]]
+encoding:
+  handle_unknown: infrequent_if_exist
+  min_frequency: 5
+models:
+  names: [baseline, ols, ridge, random_forest]
+  linear_target_transform: log1p
+  random_forest: {n_estimators: 200, min_samples_leaf: 3}
+selection_metric: MAE
+report_dir: reports/boat_adapter
+model_dir: models/boat_adapter

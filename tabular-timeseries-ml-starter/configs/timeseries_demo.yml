@@ -1,0 +1,41 @@
+# Runnable after: python scripts/make_demo_data.py
+name: timeseries_demo
+random_seed: 42
+data:
+  train_path: data/raw/timeseries_demo.csv
+  time_column: time
+  id_columns: [time]
+target_column: thermal_total
+split:
+  strategy: time  # reserve the latest 20% as a final holdout
+  test_size: 0.2
+cv:
+  strategy: time  # expanding windows; training always precedes validation
+  n_splits: 3
+  test_size: 320
+  gap: 0
+features:
+  numeric: [solar, wind, storage_lag1, hour_sin1, hour_cos1, hour_sin2, hour_cos2, year_sin, year_cos]
+  categorical: []
+  calendar: true
+  lags: {storage: 1}
+cleaning:
+  numeric_bounds:
+    solar: {min: 0}
+    wind: {min: 0}
+    storage: {min: 0}
+group_imputation:
+  strategy: mean
+  rules:
+    solar: [[__month, __hour], [__hour]]
+    wind: [[__month], [__hour]]
+    storage_lag1: [[__hour]]
+models:
+  names: [baseline, ols, ridge, random_forest]
+  baseline_strategy: mean
+  ridge_alpha: 10
+  random_forest: {n_estimators: 80, max_depth: 5, min_samples_leaf: 8}
+selection_metric: RMSE
+permutation_importance: {enabled: true, max_rows: 350}
+report_dir: reports/timeseries_demo
+model_dir: models/timeseries_demo

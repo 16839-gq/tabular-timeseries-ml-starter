@@ -1,0 +1,47 @@
+# Runnable after: python scripts/make_demo_data.py
+name: tabular_demo
+random_seed: 42
+data:
+  train_path: data/raw/tabular_demo.csv
+  predict_path: data/raw/tabular_unlabeled_demo.csv
+  group_column: make
+  id_columns: [record_id, make]
+target_column: price
+split:
+  strategy: group  # unseen makes reserved as the final holdout
+  test_size: 0.2
+cv:
+  strategy: group  # each validation fold contains unseen makes
+  n_splits: 3
+features:
+  numeric: [year, length, beam, engine_kw, length_beam_ratio, power_per_length]
+  categorical: [make, region, category]
+  ratios:
+    - {name: length_beam_ratio, numerator: length, denominator: beam}
+    - {name: power_per_length, numerator: engine_kw, denominator: length}
+cleaning:
+  strip_strings: true
+  sentinels:
+    engine_kw: [-1]
+  numeric_bounds:
+    length: {min: 1}
+    beam: {min: 0.1}
+    engine_kw: {min: 0}
+group_imputation:
+  strategy: median
+  rules:
+    engine_kw: [[make, category], [category]]
+    beam: [[category]]
+encoding:
+  handle_unknown: infrequent_if_exist
+  min_frequency: 5
+models:
+  names: [baseline, ols, ridge, random_forest]
+  baseline_strategy: median
+  linear_target_transform: log1p
+  ridge_alpha: 10.0
+  random_forest: {n_estimators: 90, min_samples_leaf: 4}
+selection_metric: RMSE
+permutation_importance: {enabled: true, max_rows: 300}
+report_dir: reports/tabular_demo
+model_dir: models/tabular_demo

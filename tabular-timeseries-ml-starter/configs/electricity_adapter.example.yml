@@ -1,0 +1,44 @@
+# EXAMPLE ADAPTER; check and revise raw columns, cutoffs, and timestamps.
+# Assuming the 5 retained Thermal_* components from the notebook.
+# Same-hour Solar/Wind are used: this is nowcasting/estimation, NOT an ahead-of-time forecast.
+name: electricity_adapter
+random_seed: 42
+data:
+  train_path: data/raw/electricity_practice.csv
+  time_column: time
+  id_columns: [time]
+target_column: Thermal_total
+target_sum_columns: [Thermal_Biomass, Thermal_Hard_Coal, Thermal_Lignite, Thermal_Methane, Thermal_Oil]
+split:
+  strategy: time
+  test_size: 0.2
+cv:
+  strategy: time
+  n_splits: 3
+  test_size: 8760 # assumes at least 3 yearly folds plus training history
+  gap: 0
+features:
+  numeric: [Solar, Wind_Onshore, Wind_Offshore, Pumped_Storage_lag1, Hydro_Run_of_River_lag1, hour_sin1, hour_cos1, hour_sin2, hour_cos2, year_sin, year_cos]
+  categorical: []
+  calendar: true
+  lags: {Pumped_Storage: 1, Hydro_Run_of_River: 1}
+cleaning:
+  numeric_bounds:
+    Solar: {min: 0, max: 20000}
+    Wind_Onshore: {min: 0, max: 25000}
+    Wind_Offshore: {min: 0, max: 10000}
+    Thermal_Methane: {min: 0, max: 4500}
+group_imputation:
+  strategy: mean
+  rules:
+    Solar: [[__month, __hour], [__month]]
+    Wind_Onshore: [[__month, __hour], [__month]]
+    Wind_Offshore: [[__month]]
+    Pumped_Storage_lag1: [[__hour]]
+    Hydro_Run_of_River_lag1: [[__month]]
+models:
+  names: [baseline, ols, ridge, random_forest]
+  random_forest: {n_estimators: 200, max_depth: 3, min_samples_leaf: 50}
+selection_metric: RMSE
+report_dir: reports/electricity_adapter
+model_dir: models/electricity_adapter
